@@ -48,9 +48,15 @@ public class AuthController {
   @POST
   @Path("/login")
   public Response login(CredentialDto credential) {
+    User user = User.findByName(credential.getName());
+
+    if (user == null || !user.password.equals(credential.getPassword())) {
+      return Response.status(Status.UNAUTHORIZED).build();
+    }
+
     String token = Jwt.issuer("https://bujo-note-backend.fr/issuer")
-      .upn(credential.getName())
-      .sign();
+        .upn(credential.getName())
+        .sign();
     return Response.ok(token).build();
   }
 
@@ -63,5 +69,5 @@ public class AuthController {
     user.persist();
     System.out.println(User.find("username = 'test'", new Parameters()).count());
     return Response.created(URI.create("/auth/me")).build();
-  } 
+  }
 }
