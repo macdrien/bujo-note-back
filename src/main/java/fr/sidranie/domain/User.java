@@ -1,13 +1,14 @@
 package fr.sidranie.domain;
 
+import java.util.List;
+
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import io.quarkus.panache.common.Parameters;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.NoResultException;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-
-import java.util.List;
 
 @Entity
 @Table(name = "person")
@@ -34,7 +35,7 @@ public class User extends PanacheEntity {
     this.password = password;
   }
 
-  public static User findByName(String name) {
+  public static User findByName(String name) throws NoResultException {
     return find("username = :name or email = :name", Parameters.with("name", name)).singleResult();
   }
 }

@@ -5,9 +5,8 @@ import java.security.Principal;
 
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
-import io.quarkus.panache.common.Parameters;
 import io.quarkus.security.Authenticated;
-import io.smallrye.jwt.build.Jwt;
+import io.quarkus.security.UnauthorizedException;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -17,14 +16,16 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.ResponseBuilder;
 import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.SecurityContext;
 
 import fr.sidranie.domain.User;
 import fr.sidranie.dto.CredentialDto;
 import fr.sidranie.dto.RegistrationDto;
+import fr.sidranie.dto.UserDto;
 import fr.sidranie.mapper.RegistrationMapper;
-import fr.sidranie.mapper.UserMapper;
+import fr.sidranie.service.AuthService;
 
 @Path("/auth")
 @RequestScoped
@@ -33,31 +34,39 @@ public class AuthController {
   @Inject
   JsonWebToken token;
 
+  @Inject
+  AuthService authService;
+
   @GET
   @Path("/me")
   @Authenticated
   public Response me(@Context SecurityContext context) {
     Principal principal = context.getUserPrincipal();
+    ResponseBuilder response;
+
     if (principal == null) {
-      return Response.status(Status.UNAUTHORIZED).build();
+      response = Response.status(Status.UNAUTHORIZED);
     }
 
-    return Response.ok(UserMapper.userToUserDto(User.findByName(principal.getName()))).build();
+    try {
+      UserDto user = authService.findMe(principal);
+      response = Response.ok(user);
+
+    } catch (UnauthorizedException exception) {
+      response = Response.status(Status.UNAUTHORIZED);
+    }
+
+    return response.build();
   }
 
   @POST
   @Path("/login")
   public Response login(CredentialDto credential) {
-    User user = User.findByName(credential.getName());
-
-    if (user == null || !user.password.equals(credential.getPassword())) {
+    try {
+      return Response.ok(authService.login(credential)).build();
+    } catch (UnauthorizedException exception) {
       return Response.status(Status.UNAUTHORIZED).build();
     }
-
-    String token = Jwt.issuer("https://bujo-note-backend.fr/issuer")
-        .upn(credential.getName())
-        .sign();
-    return Response.ok(token).build();
   }
 
   @POST
@@ -67,7 +76,6 @@ public class AuthController {
   public Response register(RegistrationDto registration) {
     User user = RegistrationMapper.registrationDtoToUser(registration);
     user.persist();
-    System.out.println(User.find("username = 'test'", new Parameters()).count());
     return Response.created(URI.create("/auth/me")).build();
   }
 }
