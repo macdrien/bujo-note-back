@@ -19,7 +19,7 @@ public class User extends PanacheEntity {
   public String givenName;
   public String email;
   public String password;
-  
+
   @OneToMany(mappedBy = "owner", fetch = FetchType.LAZY)
   public List<Note> notes;
 
@@ -37,5 +37,13 @@ public class User extends PanacheEntity {
 
   public static User findByName(String name) throws NoResultException {
     return find("username = :name or email = :name", Parameters.with("name", name)).singleResult();
+  }
+
+  public static boolean isUsernameFree(String username) {
+    return find("username = :username", Parameters.with("username", username)).count() == 0;
+  }
+
+  public static boolean isEmailFree(String email) {
+    return find("email = :email", Parameters.with("email", email)).count() == 0;
   }
 }
